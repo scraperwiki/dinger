@@ -17,7 +17,12 @@ func main() {
 		log.Fatal("HOOKBOT_LISTEN_URL not set")
 	}
 
-	port := ":8081"
+	port := os.Getenv("PORT")
+	host := os.Getenv("HOST")
+	if port == "" {
+		port = "8080"
+	}
+	addr := fmt.Sprint(host, ":", port)
 
 	finish := make(chan struct{})
 
@@ -39,7 +44,7 @@ func main() {
 
 	go func() {
 		for range events {
-			log.Printf("Recieved event.")
+			log.Printf("Received event.")
 
 			func() {
 				mu.Lock()
@@ -47,7 +52,7 @@ func main() {
 
 				eventTimes = append([]time.Time{time.Now()}, eventTimes...)
 
-				const MAX_EVENTS = 3
+				const MAX_EVENTS = 10
 				if len(eventTimes) > MAX_EVENTS {
 					eventTimes = eventTimes[:MAX_EVENTS]
 				}
@@ -64,5 +69,5 @@ func main() {
 		}
 	})
 
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
