@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +15,10 @@ func main() {
 		log.Fatal("HOOKBOT_LISTEN_URL not set")
 	}
 
+	port := ":8081"
+
 	finish := make(chan struct{})
+
 	header := http.Header{}
 	events, errs := listen.RetryingWatch(url, header, finish)
 
@@ -26,8 +30,16 @@ func main() {
 		}
 	}()
 
-	for payload := range events {
-		log.Printf("Signalled via hookbot, content of payload:")
-		log.Printf("%s", payload)
-	}
+	go func() {
+		for payload := range events {
+			log.Printf("Signalled via hookbot, content of payload:")
+			log.Printf("%s", payload)
+		}
+	}()
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, World!")
+	})
+
+	log.Fatal(http.ListenAndServe(port, nil))
 }
