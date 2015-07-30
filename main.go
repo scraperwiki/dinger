@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/scraperwiki/hookbot/pkg/listen"
 )
@@ -30,15 +32,27 @@ func main() {
 		}
 	}()
 
+	var (
+		mu         sync.Mutex
+		eventTimes []time.Time
+	)
+
 	go func() {
 		for payload := range events {
 			log.Printf("Signalled via hookbot, content of payload:")
 			log.Printf("%s", payload)
+			func() {
+				mu.Lock()
+				defer mu.Unlock()
+				eventTimes = append(eventTimes, time.Now())
+			}()
 		}
 	}()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Hello, World!")
+		mu.Lock()
+		defer mu.Unlock()
+		fmt.Fprintf(w, "<foo><bar>%v</foo></bar>\n", eventTimes)
 	})
 
 	log.Fatal(http.ListenAndServe(port, nil))
