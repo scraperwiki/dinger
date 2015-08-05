@@ -62,13 +62,13 @@ func main() {
 					log.Printf("Ding!")
 				}
 
+				const maxEvents = 10
+				if len(eventTimes) > maxEvents {
+					eventTimes = eventTimes[:maxEvents]
+				}
 			}()
 		}
 
-		const maxEvents = 10
-		if len(eventTimes) > maxEvents {
-			eventTimes = eventTimes[:maxEvents]
-		}
 	}()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
