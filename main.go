@@ -43,20 +43,31 @@ func main() {
 	)
 
 	go func() {
-		for range events {
-			log.Printf("Received event.")
+		for eventData := range events {
+			log.Printf("Received event: %q", eventData)
 
 			func() {
 				mu.Lock()
 				defer mu.Unlock()
 
-				eventTimes = append([]time.Time{time.Now()}, eventTimes...)
+				dingCount := 1 // default
+				_, err := fmt.Sscan(string(eventData), &dingCount)
 
-				const MAX_EVENTS = 10
-				if len(eventTimes) > MAX_EVENTS {
-					eventTimes = eventTimes[:MAX_EVENTS]
+				if err != nil && len(eventData) != 0 {
+					log.Printf("Event data not a number: %q", eventData)
 				}
+
+				for i := 0; i < dingCount; i++ {
+					eventTimes = append([]time.Time{time.Now()}, eventTimes...)
+					log.Printf("Ding!")
+				}
+
 			}()
+		}
+
+		const maxEvents = 10
+		if len(eventTimes) > maxEvents {
+			eventTimes = eventTimes[:maxEvents]
 		}
 	}()
 
