@@ -13,6 +13,8 @@ import (
 	"github.com/scraperwiki/hookbot/pkg/listen"
 )
 
+var slackUrl string
+
 type SlackMessage struct {
 	Text      string `json:"text"`
 	Username  string `json:"username"`
@@ -20,12 +22,33 @@ type SlackMessage struct {
 	Channel   string `json:"channel"`
 }
 
+func SendToSlack(eventData []byte) (err error) {
+	if slackUrl == "" {
+		return fmt.Errorf("No SLACK_WEBHOOK_URL provided")
+	}
+
+	jsonMsg, _ := json.Marshal(SlackMessage{string(eventData), "dinger", ":broken_heart:", "#log"})
+	msgReader := bytes.NewReader(jsonMsg)
+
+	resp, err := http.Post(slackUrl, "", msgReader)
+	if err != nil {
+		log.Printf("Error sending message to slack: %v", err)
+		return err
+	}
+	if resp.StatusCode != 200 {
+		log.Printf("Slack not OK: %v", resp)
+		return fmt.Errorf("Slack not OK: %v", resp)
+	}
+	return nil
+
+}
+
 func main() {
 	hookbotUrl := os.Getenv("HOOKBOT_LISTEN_URL")
 	if hookbotUrl == "" {
 		log.Fatal("HOOKBOT_LISTEN_URL not set")
 	}
-	slackUrl := os.Getenv("SLACK_WEBHOOK_URL")
+	slackUrl = os.Getenv("SLACK_WEBHOOK_URL")
 	if slackUrl == "" {
 		log.Print("SLACK_WEBHOOT_URL not set: will not notify in chat")
 	}
@@ -57,21 +80,7 @@ func main() {
 	go func() {
 		for eventData := range events {
 			log.Printf("Received event: %q", eventData)
-			go func() {
-				if slackUrl == "" {
-					return
-				}
-				jsonMsg, _ := json.Marshal(SlackMessage{string(eventData), "dinger", ":broken_heart:", "#log"})
-				msgReader := bytes.NewReader(jsonMsg)
-
-				resp, err := http.Post(slackUrl, "", msgReader)
-				if err != nil {
-					log.Printf("Error sending message to slack: %v", err)
-				}
-				if resp.StatusCode != 200 {
-					log.Printf("Slack not OK: %v", resp)
-				}
-			}()
+			go SendToSlack(eventData)
 
 			func() {
 				mu.Lock()
