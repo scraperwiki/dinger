@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,11 +13,14 @@ import (
 )
 
 func main() {
-	url := os.Getenv("HOOKBOT_LISTEN_URL")
-	if url == "" {
+	hookbot_url := os.Getenv("HOOKBOT_LISTEN_URL")
+	if hookbot_url == "" {
 		log.Fatal("HOOKBOT_LISTEN_URL not set")
 	}
-
+	slack_url := os.Getenv("SLACK_WEBHOOK_URL")
+	if slack_url == "" {
+		log.Print("SLACK_WEBHOOT_URL not set: will not notify in chat")
+	}
 	port := os.Getenv("PORT")
 	host := os.Getenv("HOST")
 	if port == "" {
@@ -27,7 +31,7 @@ func main() {
 	finish := make(chan struct{})
 
 	header := http.Header{}
-	events, errs := listen.RetryingWatch(url, header, finish)
+	events, errs := listen.RetryingWatch(hookbot_url, header, finish)
 
 	go func() {
 		defer close(finish)
@@ -45,6 +49,24 @@ func main() {
 	go func() {
 		for eventData := range events {
 			log.Printf("Received event: %q", eventData)
+			go func() {
+				if slack_url == "" {
+					return
+				}
+				resp, err := http.Post(slack_url, "",
+					strings.NewReader(`
+					{"text": "ping",
+					 "username": "gopher",
+					 "icon_emoji": "broken_heart", 
+					 "channel": "@dragon"}`),
+				)
+				if err != nil {
+					log.Printf("Error sending message to slack: %v", err)
+				}
+				if resp.StatusCode != 200 {
+					log.Printf("Slack not OK: %v", resp)
+				}
+			}()
 
 			func() {
 				mu.Lock()
