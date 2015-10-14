@@ -22,9 +22,9 @@ type SlackMessage struct {
 	Channel   string `json:"channel"`
 }
 
-func SendToSlack(eventData []byte) (err error) {
+func SendToSlack(eventData []byte) {
 	if slackUrl == "" {
-		return fmt.Errorf("No SLACK_WEBHOOK_URL provided")
+		return
 	}
 
 	jsonMsg, _ := json.Marshal(SlackMessage{string(eventData), "dinger", ":broken_heart:", "#log"})
@@ -33,13 +33,10 @@ func SendToSlack(eventData []byte) (err error) {
 	resp, err := http.Post(slackUrl, "", msgReader)
 	if err != nil {
 		log.Printf("Error sending message to slack: %v", err)
-		return err
 	}
 	if resp.StatusCode != 200 {
 		log.Printf("Slack not OK: %v", resp)
-		return fmt.Errorf("Slack not OK: %v", resp)
 	}
-	return nil
 
 }
 
