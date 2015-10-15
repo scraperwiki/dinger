@@ -41,14 +41,21 @@ func SendToSlack(eventData []byte) {
 }
 
 func main() {
-	hookbotUrl := os.Getenv("HOOKBOT_LISTEN_URL")
-	if hookbotUrl == "" {
-		log.Fatal("HOOKBOT_LISTEN_URL not set")
+	dingerSubscribeUrl := os.Getenv("DINGER_SUBSCRIBE_URL")
+	if dingerSubscribeUrl == "" {
+		log.Fatal("DINGER_SUBSCRIBE_URL not set")
 	}
+
+	ircSubscribeUrl := os.Getenv("IRC_SUBSCRIBE_URL")
+	if ircSubscribeUrl == "" {
+		log.Print("IRC_SUBSCRIBE_URL not set: will not notify in chat")
+	}
+
 	slackUrl = os.Getenv("SLACK_WEBHOOK_URL")
 	if slackUrl == "" {
 		log.Print("SLACK_WEBHOOT_URL not set: will not notify in chat")
 	}
+
 	port := os.Getenv("PORT")
 	host := os.Getenv("HOST")
 	if port == "" {
@@ -56,16 +63,19 @@ func main() {
 	}
 	addr := fmt.Sprint(host, ":", port)
 
-	finish := make(chan struct{})
-
 	header := http.Header{}
-	events, errs := listen.RetryingWatch(hookbotUrl, header, finish)
+	dingerEvents, dingerErrs := listen.RetryingWatch(dingerSubscribeUrl, header, nil)
+	ircEvents, ircErrs := listen.RetryingWatch(ircSubscribeUrl, header, nil)
 
 	go func() {
-		defer close(finish)
+		for err := range dingerErrs {
+			log.Printf("Error in dinger hookbot event stream: %v", err)
+		}
+	}()
 
-		for err := range errs {
-			log.Printf("Error in hookbot event stream: %v", err)
+	go func() {
+		for err := range ircErrs {
+			log.Printf("Error in irc hookbot event stream: %v", err)
 		}
 	}()
 
@@ -75,9 +85,16 @@ func main() {
 	)
 
 	go func() {
-		for eventData := range events {
-			log.Printf("Received event: %q", eventData)
-			go SendToSlack(eventData)
+		for eventData := range ircEvents {
+			log.Printf("Received IRC event: %q", eventData)
+			SendToSlack(eventData)
+		}
+	}()
+
+	// keep track of 'dinger' calls
+	go func() {
+		for eventData := range dingerEvents {
+			log.Printf("Received dinger event: %q", eventData)
 
 			func() {
 				mu.Lock()
@@ -104,6 +121,7 @@ func main() {
 
 	}()
 
+	// endpoint that Acker's bell listens to
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
