@@ -41,14 +41,14 @@ func SendToSlack(eventData []byte) {
 }
 
 func main() {
-	dingerSubscribeUrl := os.Getenv("DINGER_SUBSCRIBE_URL")
-	if dingerSubscribeUrl == "" {
-		log.Fatal("DINGER_SUBSCRIBE_URL not set")
+	ringSubscribeUrl := os.Getenv("DINGER_RING_SUBSCRIBE_URL")
+	if ringSubscribeUrl == "" {
+		log.Fatal("DINGER_RING_SUBSCRIBE_URL not set")
 	}
 
-	ircSubscribeUrl := os.Getenv("IRC_SUBSCRIBE_URL")
-	if ircSubscribeUrl == "" {
-		log.Print("IRC_SUBSCRIBE_URL not set: will not notify in chat")
+	logSubscribeUrl := os.Getenv("DINGER_LOG_SUBSCRIBE_URL")
+	if logSubscribeUrl == "" {
+		log.Print("LOG_SUBSCRIBE_URL not set: will not notify in chat")
 	}
 
 	slackUrl = os.Getenv("SLACK_WEBHOOK_URL")
@@ -64,18 +64,18 @@ func main() {
 	addr := fmt.Sprint(host, ":", port)
 
 	header := http.Header{}
-	dingerEvents, dingerErrs := listen.RetryingWatch(dingerSubscribeUrl, header, nil)
-	ircEvents, ircErrs := listen.RetryingWatch(ircSubscribeUrl, header, nil)
+	ringEvents, ringErrs := listen.RetryingWatch(ringSubscribeUrl, header, nil)
+	logEvents, logErrs := listen.RetryingWatch(logSubscribeUrl, header, nil)
 
 	go func() {
-		for err := range dingerErrs {
-			log.Printf("Error in dinger hookbot event stream: %v", err)
+		for err := range ringErrs {
+			log.Printf("Error with ring event stream: %v", err)
 		}
 	}()
 
 	go func() {
-		for err := range ircErrs {
-			log.Printf("Error in irc hookbot event stream: %v", err)
+		for err := range logErrs {
+			log.Printf("Error with log hookbot event stream: %v", err)
 		}
 	}()
 
@@ -85,16 +85,16 @@ func main() {
 	)
 
 	go func() {
-		for eventData := range ircEvents {
-			log.Printf("Received IRC event: %q", eventData)
+		for eventData := range logEvents {
+			log.Printf("Received log event: %q", eventData)
 			SendToSlack(eventData)
 		}
 	}()
 
-	// keep track of 'dinger' calls
+	// keep track of ring calls
 	go func() {
-		for eventData := range dingerEvents {
-			log.Printf("Received dinger event: %q", eventData)
+		for eventData := range ringEvents {
+			log.Printf("Received ring event: %q", eventData)
 
 			func() {
 				mu.Lock()
