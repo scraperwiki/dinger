@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,10 +13,47 @@ import (
 	"github.com/scraperwiki/hookbot/pkg/listen"
 )
 
+var slackUrl string
+
+type SlackMessage struct {
+	Text      string `json:"text"`
+	Username  string `json:"username"`
+	IconEmoji string `json:"icon_emoji"`
+	Channel   string `json:"channel"`
+}
+
+func SendToSlack(eventData []byte) {
+	if slackUrl == "" {
+		return
+	}
+
+	jsonMsg, _ := json.Marshal(SlackMessage{string(eventData), "dinger", ":broken_heart:", "#log"})
+	msgReader := bytes.NewReader(jsonMsg)
+
+	resp, err := http.Post(slackUrl, "", msgReader)
+	if err != nil {
+		log.Printf("Error sending message to slack: %v", err)
+	}
+	if resp.StatusCode != 200 {
+		log.Printf("Slack not OK: %v", resp)
+	}
+
+}
+
 func main() {
-	url := os.Getenv("HOOKBOT_LISTEN_URL")
-	if url == "" {
-		log.Fatal("HOOKBOT_LISTEN_URL not set")
+	ringSubscribeUrl := os.Getenv("DINGER_RING_SUBSCRIBE_URL")
+	if ringSubscribeUrl == "" {
+		log.Fatal("DINGER_RING_SUBSCRIBE_URL not set")
+	}
+
+	logSubscribeUrl := os.Getenv("DINGER_LOG_SUBSCRIBE_URL")
+	if logSubscribeUrl == "" {
+		log.Print("LOG_SUBSCRIBE_URL not set: will not notify in chat")
+	}
+
+	slackUrl = os.Getenv("SLACK_WEBHOOK_URL")
+	if slackUrl == "" {
+		log.Print("SLACK_WEBHOOT_URL not set: will not notify in chat")
 	}
 
 	port := os.Getenv("PORT")
@@ -24,16 +63,19 @@ func main() {
 	}
 	addr := fmt.Sprint(host, ":", port)
 
-	finish := make(chan struct{})
-
 	header := http.Header{}
-	events, errs := listen.RetryingWatch(url, header, finish)
+	ringEvents, ringErrs := listen.RetryingWatch(ringSubscribeUrl, header, nil)
+	logEvents, logErrs := listen.RetryingWatch(logSubscribeUrl, header, nil)
 
 	go func() {
-		defer close(finish)
+		for err := range ringErrs {
+			log.Printf("Error with ring event stream: %v", err)
+		}
+	}()
 
-		for err := range errs {
-			log.Printf("Error in hookbot event stream: %v", err)
+	go func() {
+		for err := range logErrs {
+			log.Printf("Error with log hookbot event stream: %v", err)
 		}
 	}()
 
@@ -43,8 +85,16 @@ func main() {
 	)
 
 	go func() {
-		for eventData := range events {
-			log.Printf("Received event: %q", eventData)
+		for eventData := range logEvents {
+			log.Printf("Received log event: %q", eventData)
+			SendToSlack(eventData)
+		}
+	}()
+
+	// keep track of ring calls
+	go func() {
+		for eventData := range ringEvents {
+			log.Printf("Received ring event: %q", eventData)
 
 			func() {
 				mu.Lock()
@@ -71,6 +121,7 @@ func main() {
 
 	}()
 
+	// endpoint that Acker's bell listens to
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
