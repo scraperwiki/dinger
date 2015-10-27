@@ -22,12 +22,37 @@ type SlackMessage struct {
 	Channel   string `json:"channel"`
 }
 
+func ParseEventData(eventData []byte) SlackMessage {
+	// "Assumes data is in the form irc/name/icon␀msg"
+	i := bytes.IndexByte(eventData, byte('\x00'))
+	if i == -1 {
+		return SlackMessage{
+			string(eventData),
+			"dinger",
+			":broken_heart:",
+			"#log",
+		}
+	}
+	route := bytes.SplitN(eventData, []byte("\x00"), 2)[0]
+	text := bytes.SplitN(eventData, []byte("\x00"), 2)[1]
+	name := bytes.SplitN(route, []byte("/"), 3)[1]
+	icon := bytes.SplitN(route, []byte("/"), 3)[2]
+	return SlackMessage{
+		string(text),
+		string(name),
+		string(icon),
+		"#log",
+	}
+
+}
+
 func SendToSlack(eventData []byte) {
 	if slackUrl == "" {
 		return
 	}
 
-	jsonMsg, _ := json.Marshal(SlackMessage{string(eventData), "dinger", ":broken_heart:", "#log"})
+	msg := ParseEventData(eventData)
+	jsonMsg, _ := json.Marshal(msg)
 	msgReader := bytes.NewReader(jsonMsg)
 
 	resp, err := http.Post(slackUrl, "", msgReader)
