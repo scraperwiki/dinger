@@ -22,8 +22,8 @@ type SlackMessage struct {
 	Channel   string `json:"channel"`
 }
 
-func ParseEventData(eventData []byte) SlackMessage {
-	// "Assumes data is in the form irc/name/icon␀msg"
+func CreateSlackMessage(eventData []byte) SlackMessage {
+	// Assumes data is in the form irc/name/icon␀msg
 	i := bytes.IndexByte(eventData, byte('\x00'))
 	if i == -1 {
 		return SlackMessage{
@@ -33,10 +33,12 @@ func ParseEventData(eventData []byte) SlackMessage {
 			"#log",
 		}
 	}
-	route := bytes.SplitN(eventData, []byte("\x00"), 2)[0]
-	text := bytes.SplitN(eventData, []byte("\x00"), 2)[1]
-	name := bytes.SplitN(route, []byte("/"), 3)[1]
-	icon := bytes.SplitN(route, []byte("/"), 3)[2]
+	splitEventData := bytes.SplitN(eventData, []byte("\x00"), 2)
+	route := splitEventData[0]
+	text := splitEventData[1]
+	splitRoute := bytes.SplitN(route, []byte("/"), 3)
+	name := splitRoute[1]
+	icon := splitRoute[2]
 	return SlackMessage{
 		string(text),
 		string(name),
@@ -51,7 +53,7 @@ func SendToSlack(eventData []byte) {
 		return
 	}
 
-	msg := ParseEventData(eventData)
+	msg := CreateSlackMessage(eventData)
 	jsonMsg, _ := json.Marshal(msg)
 	msgReader := bytes.NewReader(jsonMsg)
 
