@@ -23,7 +23,8 @@ type SlackMessage struct {
 }
 
 func CreateSlackMessage(eventData []byte) SlackMessage {
-	// Assumes data is in the form irc/name/icon␀msg
+	// Assumes topic is of the form domain/name/icon␀msg
+	// but domain is ignored (should probably be slack.scraperwiki.com)
 	i := bytes.IndexByte(eventData, byte('\x00'))
 	if i == -1 {
 		return SlackMessage{
