@@ -41,19 +41,19 @@ func SendToSlack(eventData []byte) {
 }
 
 func main() {
-	ringSubscribeUrl := os.Getenv("DINGER_RING_SUBSCRIBE_URL")
+	ringSubscribeUrl := os.Getenv("DINGER_RING_SUB_URL")
 	if ringSubscribeUrl == "" {
-		log.Fatal("DINGER_RING_SUBSCRIBE_URL not set")
+		log.Fatal("DINGER_RING_SUB_URL not set")
 	}
 
-	logSubscribeUrl := os.Getenv("DINGER_LOG_SUBSCRIBE_URL")
+	logSubscribeUrl := os.Getenv("DINGER_LOG_SUB_URL")
 	if logSubscribeUrl == "" {
-		log.Print("LOG_SUBSCRIBE_URL not set: will not notify in chat")
+		log.Print("DINGER_LOG_SUB_URL not set: will not notify in chat")
 	}
 
 	slackUrl = os.Getenv("SLACK_WEBHOOK_URL")
 	if slackUrl == "" {
-		log.Print("SLACK_WEBHOOT_URL not set: will not notify in chat")
+		log.Print("SLACK_WEBHOOK_URL not set: will not notify in chat")
 	}
 
 	port := os.Getenv("PORT")
