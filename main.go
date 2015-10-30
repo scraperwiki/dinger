@@ -22,12 +22,40 @@ type SlackMessage struct {
 	Channel   string `json:"channel"`
 }
 
+func CreateSlackMessage(eventData []byte) SlackMessage {
+	// Assumes topic is of the form domain/name/icon␀msg
+	// but domain is ignored (should probably be slack.scraperwiki.com)
+	i := bytes.IndexByte(eventData, byte('\x00'))
+	if i == -1 {
+		return SlackMessage{
+			string(eventData),
+			"dinger",
+			":broken_heart:",
+			"#log",
+		}
+	}
+	splitEventData := bytes.SplitN(eventData, []byte("\x00"), 2)
+	route := splitEventData[0]
+	text := splitEventData[1]
+	splitRoute := bytes.SplitN(route, []byte("/"), 3)
+	name := splitRoute[1]
+	icon := splitRoute[2]
+	return SlackMessage{
+		string(text),
+		string(name),
+		string(icon),
+		"#log",
+	}
+
+}
+
 func SendToSlack(eventData []byte) {
 	if slackUrl == "" {
 		return
 	}
 
-	jsonMsg, _ := json.Marshal(SlackMessage{string(eventData), "dinger", ":broken_heart:", "#log"})
+	msg := CreateSlackMessage(eventData)
+	jsonMsg, _ := json.Marshal(msg)
 	msgReader := bytes.NewReader(jsonMsg)
 
 	resp, err := http.Post(slackUrl, "", msgReader)
