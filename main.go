@@ -66,7 +66,7 @@ func SendToSlack(eventData []byte) {
 	if resp.StatusCode != 200 {
 		log.Printf("Slack not OK: %v", resp)
 	}
-
+	defer resp.Body.Close()
 }
 
 func main() {
