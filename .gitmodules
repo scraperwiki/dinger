@@ -1,0 +1,6 @@
+[submodule "vendor/github.com/gorilla/websocket"]
+	path = vendor/github.com/gorilla/websocket
+	url = https://github.com/gorilla/websocket
+[submodule "vendor/github.com/scraperwiki/hookbot"]
+	path = vendor/github.com/scraperwiki/hookbot
+	url = https://github.com/scraperwiki/hookbot

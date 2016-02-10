@@ -61,11 +61,12 @@ func SendToSlack(eventData []byte) {
 	resp, err := http.Post(slackUrl, "", msgReader)
 	if err != nil {
 		log.Printf("Error sending message to slack: %v", err)
+		return
 	}
 	if resp.StatusCode != 200 {
 		log.Printf("Slack not OK: %v", resp)
 	}
-
+	defer resp.Body.Close()
 }
 
 func main() {
