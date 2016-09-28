@@ -1,4 +1,4 @@
-FROM golang:1.5.3
+FROM golang:1.7-alpine
 
 ENTRYPOINT dinger
 EXPOSE 8080
