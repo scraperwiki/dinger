@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scraperwiki/hookbot/pkg/listen"
+	"github.com/sensiblecodeio/hookbot/pkg/listen"
 )
 
 var slackUrl string
