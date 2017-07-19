@@ -13,21 +13,21 @@ import (
 	"github.com/sensiblecodeio/hookbot/pkg/listen"
 )
 
-var slackUrl string
+var slackURL string
 
-type SlackMessage struct {
+type slackMessage struct {
 	Text      string `json:"text"`
 	Username  string `json:"username"`
 	IconEmoji string `json:"icon_emoji"`
 	Channel   string `json:"channel"`
 }
 
-func CreateSlackMessage(eventData []byte) SlackMessage {
-	// Assumes topic is of the form domain/name/icon␀msg
+func createslackMessage(eventData []byte) slackMessage {
+	// Assumes eventData is of the form domain/channel/name/icon␀msg
 	// but domain is ignored (should probably be slack.scraperwiki.com)
 	i := bytes.IndexByte(eventData, byte('\x00'))
 	if i == -1 {
-		return SlackMessage{
+		return slackMessage{
 			string(eventData),
 			"dinger",
 			":broken_heart:",
@@ -55,16 +55,16 @@ func CreateSlackMessage(eventData []byte) SlackMessage {
 
 }
 
-func SendToSlack(eventData []byte) {
-	if slackUrl == "" {
+func sendToSlack(eventData []byte) {
+	if slackURL == "" {
 		return
 	}
 
-	msg := CreateSlackMessage(eventData)
+	msg := createslackMessage(eventData)
 	jsonMsg, _ := json.Marshal(msg)
 	msgReader := bytes.NewReader(jsonMsg)
 
-	resp, err := http.Post(slackUrl, "", msgReader)
+	resp, err := http.Post(slackURL, "", msgReader)
 	if err != nil {
 		log.Printf("Error sending message to slack: %v", err)
 		return
@@ -76,18 +76,18 @@ func SendToSlack(eventData []byte) {
 }
 
 func main() {
-	ringSubscribeUrl := os.Getenv("DINGER_RING_SUB_URL")
-	if ringSubscribeUrl == "" {
+	ringSubscribeURL := os.Getenv("DINGER_RING_SUB_URL")
+	if ringSubscribeURL == "" {
 		log.Fatal("DINGER_RING_SUB_URL not set")
 	}
 
-	logSubscribeUrl := os.Getenv("DINGER_LOG_SUB_URL")
-	if logSubscribeUrl == "" {
+	logSubscribeURL := os.Getenv("DINGER_LOG_SUB_URL")
+	if logSubscribeURL == "" {
 		log.Print("DINGER_LOG_SUB_URL not set: will not notify in chat")
 	}
 
-	slackUrl = os.Getenv("SLACK_WEBHOOK_URL")
-	if slackUrl == "" {
+	slackURL = os.Getenv("SLACK_WEBHOOK_URL")
+	if slackURL == "" {
 		log.Print("SLACK_WEBHOOK_URL not set: will not notify in chat")
 	}
 
@@ -99,8 +99,8 @@ func main() {
 	addr := fmt.Sprint(host, ":", port)
 
 	header := http.Header{}
-	ringEvents, ringErrs := listen.RetryingWatch(ringSubscribeUrl, header, nil)
-	logEvents, logErrs := listen.RetryingWatch(logSubscribeUrl, header, nil)
+	ringEvents, ringErrs := listen.RetryingWatch(ringSubscribeURL, header, nil)
+	logEvents, logErrs := listen.RetryingWatch(logSubscribeURL, header, nil)
 
 	go func() {
 		for err := range ringErrs {
@@ -122,7 +122,7 @@ func main() {
 	go func() {
 		for eventData := range logEvents {
 			log.Printf("Received log event: %q", eventData)
-			SendToSlack(eventData)
+			sendToSlack(eventData)
 		}
 	}()
 
