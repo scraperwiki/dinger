@@ -31,20 +31,26 @@ func CreateSlackMessage(eventData []byte) SlackMessage {
 			string(eventData),
 			"dinger",
 			":broken_heart:",
-			"#log",
+			"#pdftables-bots",
 		}
 	}
+
 	splitEventData := bytes.SplitN(eventData, []byte("\x00"), 2)
 	route := splitEventData[0]
 	text := splitEventData[1]
+
 	splitRoute := bytes.SplitN(route, []byte("/"), 3)
-	name := splitRoute[1]
-	icon := splitRoute[2]
-	return SlackMessage{
+	domain := splitRoute[0]
+	_ = domain // Unused.
+	channel := splitRoute[1]
+	name := splitRoute[2]
+	icon := splitRoute[3]
+
+	return slackMessage{
 		string(text),
 		string(name),
 		string(icon),
-		"#log",
+		"#" + string(channel),
 	}
 
 }
